@@ -1,4 +1,4 @@
-package ec.aj.com.mp_envio.logIn;
+package ec.aj.com.mp_envio.main;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -39,6 +39,7 @@ public class LogIn extends AppCompatActivity {
         usu = (EditText) findViewById(R.id.input_email);
         con = (EditText) findViewById(R.id.input_password);
         ingreso = (Button) findViewById(R.id.btn_login);
+        prefs = getPreferences(this.MODE_PRIVATE);
 
         ingreso.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -60,7 +61,7 @@ public class LogIn extends AppCompatActivity {
     }
     public void abrirMenu(){
         Intent intent;
-        intent = new Intent(this, LoginActivity .class);
+        intent = new Intent(this, EnvioAlerta.class);
         startActivity(intent);
         finish();
     }
