@@ -1,12 +1,15 @@
 package ec.aj.com.mp_envio.main;
 
 import android.Manifest;
+import android.app.ProgressDialog;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
@@ -21,7 +24,9 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
@@ -33,10 +38,13 @@ public class EnvioAlerta extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, LocationListener {
 
     ImageView imgSOS;
-    SharedPreferences prefs ;
+    SharedPreferences prefs;
+    Button btnEnviar;
     LocationManager locationManager;
+    ProgressDialog progressDialog;
+    ProgressDialog progressDialog1;
 
-    private static final String[] LOCATION_PERMS={
+    private static final String[] LOCATION_PERMS = {
             Manifest.permission.ACCESS_FINE_LOCATION
     };
 
@@ -63,20 +71,54 @@ public class EnvioAlerta extends AppCompatActivity
         navigationView.setNavigationItemSelectedListener(this);
         cargar();
     }
-    public void cargar(){
 
+    public void cargar() {
+
+        prefs = PreferenceManager.getDefaultSharedPreferences(this);
         imgSOS = (ImageView) findViewById(R.id.imgSos);
-        prefs = getPreferences(this.MODE_PRIVATE);
+        String strUsuario = prefs.getString("usuario", "Usuario").toUpperCase();
+
+        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        View headerView = navigationView.getHeaderView(0);
+        TextView navUsername = (TextView) headerView.findViewById(R.id.txtUsuarioMenu);
+        navUsername.setText(strUsuario);
+
+        btnEnviar = (Button) findViewById(R.id.btn_enviar_alert);
 
         imgSOS.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                getLocation();
+                obtenerUbicacion();
             }
         });
-        if(!checkLocationPermission())
-            ActivityCompat.requestPermissions(this,new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+        btnEnviar.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                obtenerUbicacion();
+            }
+        });
+
+        if (!checkLocationPermission())
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+        getLocation();
     }
 
+    public void obtenerUbicacion() {
+        progressDialog = ProgressDialog.show(this, "", "Procesando...", false);
+        LocationManager lm = (LocationManager) getSystemService(this.LOCATION_SERVICE);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        Location location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        double longitude = location.getLongitude();
+        double latitude = location.getLatitude();
+        enviarAlerta( "" + latitude, "" + longitude, prefs.getString("usuario", "Usuario").toUpperCase());
+    }
     public boolean checkLocationPermission()
     {
         String permission = "android.permission.ACCESS_FINE_LOCATION";
@@ -84,27 +126,26 @@ public class EnvioAlerta extends AppCompatActivity
         return (res == PackageManager.PERMISSION_GRANTED);
     }
 
-    public void enviarAlerta( String strLat, String strLon){
-        /*AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
-        alertDialogBuilder.setMessage("Alerta enviada exitosamente, en un momento la atenderán. Latitud: " + strLat
-                                        + "Longitud: " + strLon);
-        alertDialogBuilder.show();*/
+    public void enviarAlerta( String strLat, String strLon, String usuario){
 
         String url = "http://www.alerta.amazonebaycomprasecuador.com/api/Agente";
         ConectRest conectRest = new ConectRest(this, url);
         try {
-            conectRest.comsumirRest();
+            conectRest.comsumirRest(strLat + "|" + strLon, progressDialog, usuario);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     public void getLocation() {
+        progressDialog1 = ProgressDialog.show(this, "", "Obteniendo Ubicación...", false);
         try {
             locationManager = (LocationManager) getSystemService(this.LOCATION_SERVICE);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 5, this);
+            progressDialog1.dismiss();
         }
         catch(SecurityException e) {
+            progressDialog1.dismiss();
             e.printStackTrace();
         }
     }
@@ -113,7 +154,6 @@ public class EnvioAlerta extends AppCompatActivity
     public void onLocationChanged(Location location) {
         String strLat = "" + location.getLatitude();
         String strLon = "" + location.getLongitude();
-        enviarAlerta(strLat, strLon);
     }
 
     @Override
@@ -174,6 +214,11 @@ public class EnvioAlerta extends AppCompatActivity
         } else if (id == R.id.nav_gallery) {
 
         } else if (id == R.id.nav_tools) {
+            prefs.edit().putBoolean("register", false).commit();
+            Intent intent;
+            intent = new Intent(this, LogIn.class);
+            startActivity(intent);
+            finish();
 
         } else if (id == R.id.nav_share) {
 

@@ -15,15 +15,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-
-import javax.net.ssl.HttpsURLConnection;
 
 public class ConectRest {
 
@@ -37,15 +32,13 @@ public class ConectRest {
         this.mensaje = new MensajePopUp(context);
     }
 
-    public void comsumirRest() throws IOException {
-
-        final ProgressDialog progressDialog = ProgressDialog.show(context, "", "Procesando...", false);
+    public void comsumirRest(String strLatLon, final ProgressDialog progressDialog, String strUsuario) throws IOException {
 
         Map<String, String> params = new HashMap();
-        params.put("usuario", "USUARIO");
-        params.put("localizacion", "10,45||5,48");
-        params.put("descripcion", "Ayuda");
-        params.put("estado", "Activo");
+        params.put("usuario", strUsuario); // 30 car
+        params.put("localizacion", strLatLon); // 100 caracteres
+        params.put("descripcion", "Ayuda"); //40 caracteres
+        params.put("estado", "Activo"); // 10
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String currentDateandTime = sdf.format(new Date());
         params.put("fechaCreacion", currentDateandTime);
@@ -83,7 +76,7 @@ public class ConectRest {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         progressDialog.dismiss();
-                        mensaje.mensajeSimple(error.toString());
+                        mensaje.mensajeSimple("Hubo un problema, intente nuevamente.");
                         Log.e("Rest Error", error.toString());
                     }
                 }
