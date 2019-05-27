@@ -14,6 +14,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
+import android.util.Log;
 import android.view.View;
 import android.support.v4.view.GravityCompat;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -33,6 +34,7 @@ import java.io.IOException;
 
 import ec.aj.com.mp_envio.R;
 import ec.aj.com.mp_envio.service.ConectRest;
+import ec.aj.com.mp_envio.service.MensajePopUp;
 
 public class EnvioAlerta extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, LocationListener {
@@ -43,6 +45,7 @@ public class EnvioAlerta extends AppCompatActivity
     LocationManager locationManager;
     ProgressDialog progressDialog;
     ProgressDialog progressDialog1;
+    MensajePopUp mensajePopUp;
 
     private static final String[] LOCATION_PERMS = {
             Manifest.permission.ACCESS_FINE_LOCATION
@@ -95,12 +98,82 @@ public class EnvioAlerta extends AppCompatActivity
                 obtenerUbicacion();
             }
         });
+        mensajePopUp = new MensajePopUp(this);
 
         if (!checkLocationPermission())
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
         getLocation();
     }
 
+    public Location getLocationPhone() {
+        Location location = null;
+        try {
+
+            locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+
+            // getting GPS status
+            boolean isGPSEnabled = locationManager
+                    .isProviderEnabled(LocationManager.GPS_PROVIDER);
+
+            // getting network status
+            boolean isNetworkEnabled = locationManager
+                    .isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+
+            if (!isGPSEnabled && !isNetworkEnabled) {
+                // no network provider is enabled
+            } else {
+                boolean canGetLocation = true;
+                if (isNetworkEnabled) {
+                    if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        // TODO: Consider calling
+                        //    ActivityCompat#requestPermissions
+                        // here to request the missing permissions, and then overriding
+                        //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                        //                                          int[] grantResults)
+                        // to handle the case where the user grants the permission. See the documentation
+                        // for ActivityCompat#requestPermissions for more details.
+                        //  return 1;
+                    }
+                    locationManager.requestLocationUpdates(
+                            LocationManager.NETWORK_PROVIDER,
+                            0,
+                            0, this);
+                    Log.d("Network", "Network Enabled");
+                    if (locationManager != null) {
+                        location = locationManager
+                                .getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                        if (location != null) {
+                            location.getLatitude();
+                            location.getLongitude();
+                        }
+                    }
+                }
+                // if GPS Enabled get lat/long using GPS Services
+                if (isGPSEnabled) {
+                    if (location == null) {
+                        locationManager.requestLocationUpdates(
+                                LocationManager.GPS_PROVIDER,
+                                0,
+                                0, this);
+                        Log.d("GPS", "GPS Enabled");
+                        if (locationManager != null) {
+                            location = locationManager
+                                    .getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                            if (location != null) {
+                                location.getLatitude();
+                                location.getLongitude();
+                            }
+                        }
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return location;
+    }
     public void obtenerUbicacion() {
         progressDialog = ProgressDialog.show(this, "", "Procesando...", false);
         LocationManager lm = (LocationManager) getSystemService(this.LOCATION_SERVICE);
@@ -114,10 +187,17 @@ public class EnvioAlerta extends AppCompatActivity
             // for ActivityCompat#requestPermissions for more details.
             return;
         }
-        Location location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        double longitude = location.getLongitude();
-        double latitude = location.getLatitude();
-        enviarAlerta( "" + latitude, "" + longitude, prefs.getString("usuario", "Usuario").toUpperCase());
+        Location location = getLocationPhone();//lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        if(location!= null) {
+            double longitude = location.getLongitude();
+            double latitude = location.getLatitude();
+            enviarAlerta("" + latitude, "" + longitude, prefs.getString("usuario", "Usuario").toUpperCase());
+        }
+        else
+        {
+            progressDialog.dismiss();
+            mensajePopUp.mensajeSimple("No se pudo obtener la ubicación, verifique que el GPS esté activado");
+        }
     }
     public boolean checkLocationPermission()
     {
